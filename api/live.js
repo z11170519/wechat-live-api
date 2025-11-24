@@ -1,4 +1,4 @@
-// api/live.js - 使用 Cloudflare Workers 代理
+// api/live.js - 修复数据格式问题
 export default async function handler(req, res) {
   // 设置 CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29,21 +29,31 @@ export default async function handler(req, res) {
 
     console.log('通过 Cloudflare Worker 获取数据...');
 
-    // 使用你的实际 Worker URL
+    // 使用你的 Worker URL
     const workerUrl = `https://wechat-proxy.547067000.workers.dev/live?appid=${appid}&secret=${secret}&start=${start}&limit=${limit}`;
     
     const response = await fetch(workerUrl);
     const result = await response.json();
 
-    // 返回结果
+    // 如果 Worker 返回错误，直接返回
+    if (!result.success) {
+      return res.json({
+        success: false,
+        error: 'Cloudflare Worker 返回错误',
+        details: result,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 返回成功结果
     res.json({
       success: true,
       message: '通过 Cloudflare Worker 获取成功',
       data: result.data,
       debug: {
         proxy: 'Cloudflare Worker',
-        room_count: result.data.room_info ? result.data.room_info.length : 0,
-        total: result.data.total || 0
+        room_count: result.debug.room_count,
+        total: result.debug.total
       },
       timestamp: new Date().toISOString()
     });
