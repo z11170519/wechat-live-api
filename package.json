@@ -1,9 +1,15 @@
 {
   "name": "wechat-live-api",
   "version": "1.0.0",
+  "description": "微信服务号直播间信息 API",
   "scripts": {
     "dev": "vercel dev"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@vercel/node": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
 }
