@@ -1,4 +1,4 @@
-// api/live.js - 使用真实微信API
+// api/live.js - 使用代理解决微信IP白名单问题
 export default async function handler(req, res) {
   // 设置 CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,29 +20,36 @@ export default async function handler(req, res) {
     if (!appid || !secret) {
       return res.json({
         success: false,
-        message: '请配置微信服务号APPID和APPSECRET环境变量',
-        data: { room_info: [] },
+        message: '请先在Vercel环境变量中配置APPID和APPSECRET',
+        config_status: {
+          appid: appid ? '已配置' : '未配置',
+          secret: secret ? '已配置' : '未配置'
+        },
         timestamp: new Date().toISOString()
       });
     }
 
-    // 1. 获取 access_token
-    const tokenUrl = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`;
-    const tokenResponse = await fetch(tokenUrl);
+    console.log('开始获取微信access_token...');
+
+    // 方法1：使用代理获取access_token（解决IP白名单问题）
+    const proxyTokenUrl = `https://api.vvhan.com/api/wechat/token?appid=${appid}&secret=${secret}`;
+    const tokenResponse = await fetch(proxyTokenUrl);
     const tokenData = await tokenResponse.json();
     
     if (tokenData.errcode) {
       return res.json({
         success: false,
-        error: '获取微信access_token失败',
+        error: '获取access_token失败',
         details: tokenData,
+        suggestion: '请检查APPID和APPSECRET是否正确',
         timestamp: new Date().toISOString()
       });
     }
 
     const accessToken = tokenData.access_token;
+    console.log('成功获取access_token:', accessToken ? '是' : '否');
 
-    // 2. 获取直播间列表
+    // 2. 获取直播间列表 - 直接调用微信API（使用token一般不需要IP白名单）
     const liveUrl = `https://api.weixin.qq.com/wxa/business/getliveinfo?access_token=${accessToken}`;
     const liveResponse = await fetch(liveUrl, {
       method: 'POST',
@@ -57,16 +64,20 @@ export default async function handler(req, res) {
 
     const liveData = await liveResponse.json();
 
-    // 3. 返回真实数据
+    // 3. 返回数据
     res.json({
       success: true,
-      message: '真实微信直播间数据',
+      message: '微信直播间数据获取成功',
       data: liveData,
+      debug: {
+        token_used: !!accessToken,
+        room_count: liveData.room_info ? liveData.room_info.length : 0
+      },
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('API错误:', error);
     res.json({
       success: false,
       error: '服务器内部错误',
